@@ -6,8 +6,7 @@ import {Test, console, console2} from "forge-std/Test.sol";
 import {Raffle} from "../../src/raffle.sol";
 import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
-import {VRFCoordinatorV2Mock} from
-    "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {VRFCoordinatorV2Mock} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 contract RaffleTest is Test {
@@ -30,8 +29,16 @@ contract RaffleTest is Test {
     function setUp() external {
         DeployRaffle deployRaffle = new DeployRaffle();
         (raffle, helperConfig) = deployRaffle.run();
-        (ticketPrice, interval, vrfCoordinator, gasLane, subscriptionId, callbackGasLimit, link) =
-            helperConfig.activeNetworkConfig();
+        (
+            ticketPrice,
+            interval,
+            vrfCoordinator,
+            gasLane,
+            subscriptionId,
+            callbackGasLimit,
+            link,
+
+        ) = helperConfig.activeNetworkConfig();
 
         vm.prank(PLAYER);
         vm.deal(PLAYER, STARTING_USER_BALANCE);
@@ -74,48 +81,65 @@ contract RaffleTest is Test {
     }
 
     //CheckUpkeep
-    function testCheckUpkeepShouldReturnFalseIfNoBalance() external passInterval {
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+    function testCheckUpkeepShouldReturnFalseIfNoBalance()
+        external
+        passInterval
+    {
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(!upkeepNeeded);
     }
 
-    function testCheckUpkeepShouldReturnFalseIfNoPlayers() external passInterval {
+    function testCheckUpkeepShouldReturnFalseIfNoPlayers()
+        external
+        passInterval
+    {
         vm.deal(address(raffle), STARTING_USER_BALANCE);
 
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(!upkeepNeeded);
     }
 
     function testCheckUpkeepShouldReturnFalseIfIntervalHasNotPassed() external {
         raffle.buyTicket{value: ticketPrice}();
 
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(!upkeepNeeded);
     }
 
-    function testCheckUpkeepShouldReturnFalseIfRaffleInCalculatingState() external passInterval {
+    function testCheckUpkeepShouldReturnFalseIfRaffleInCalculatingState()
+        external
+        passInterval
+    {
         raffle.buyTicket{value: ticketPrice}();
 
         raffle.performUpkeep("");
 
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(!upkeepNeeded);
     }
 
-    function testCheckUpkeepShouldReturnTrueIfAllConditionsAreMet() external passInterval {
+    function testCheckUpkeepShouldReturnTrueIfAllConditionsAreMet()
+        external
+        passInterval
+    {
         raffle.buyTicket{value: ticketPrice}();
 
-        (bool upkeepNeeded,) = raffle.checkUpkeep("");
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(upkeepNeeded);
     }
 
     //PerformUpKeep
-    function testPerformUpkeepShouldRevertIfCheckUpKeepIsRetunsFalse() external {
+    function testPerformUpkeepShouldRevertIfCheckUpKeepIsRetunsFalse()
+        external
+    {
         vm.expectRevert(Raffle.Raffle__UpkeepNotNeeded.selector);
         raffle.performUpkeep("");
     }
 
-    function testPerformUpkeepShouldSetRaffleStateToCalculationg() external passInterval {
+    function testPerformUpkeepShouldSetRaffleStateToCalculationg()
+        external
+        passInterval
+    {
         raffle.buyTicket{value: ticketPrice}();
 
         raffle.performUpkeep("");
@@ -124,15 +148,27 @@ contract RaffleTest is Test {
         assert(state == Raffle.RaffleState.CalculatingWinner);
     }
 
+    modifier skipFork {
+        if(block.chainid != 31337) {
+            return;
+        }
+        _;
+    }
+
     //fuzzing
-    function testFulfillRandomWordsShouldOnlyBeCallableAfterPerformUpkeep(uint256 _requestId) external passInterval {
+    function testFulfillRandomWordsShouldOnlyBeCallableAfterPerformUpkeep(
+        uint256 _requestId
+    ) external passInterval skipFork {
         raffle.buyTicket{value: ticketPrice}();
 
         vm.expectRevert("nonexistent request");
-        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(_requestId, address(raffle));
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            _requestId,
+            address(raffle)
+        );
     }
 
-    function testFulfillRandomWordsShouldPickAWinner() external passInterval {
+    function testFulfillRandomWordsShouldPickAWinner() external passInterval skipFork {
         uint8 numberOfPlayers = 5;
 
         raffle.buyTicket{value: ticketPrice}();
@@ -152,12 +188,18 @@ contract RaffleTest is Test {
 
         uint256 previousTimeStamp = raffle.getLastTimeStamp();
 
-        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(uint256(requestId), address(raffle));
+        VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(
+            uint256(requestId),
+            address(raffle)
+        );
 
         assert(uint256(raffle.s_raffleState()) == 0);
         assert(raffle.getLastWinner() != address(0));
         assert(raffle.getPlayers().length == 0);
         assert(previousTimeStamp < raffle.getLastTimeStamp());
-        assert(raffle.getLastWinner().balance == (STARTING_USER_BALANCE + prize) - ticketPrice);
+        assert(
+            raffle.getLastWinner().balance ==
+                (STARTING_USER_BALANCE + prize) - ticketPrice
+        );
     }
 }

@@ -1,33 +1,9 @@
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// view & pure functions
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.20;
 
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
-
-// instal chainlink
-// npm install @chainlink/contracts
 
 contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEther();
@@ -45,7 +21,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     uint256 public immutable i_ticketPrice;
     address payable[] private s_players;
-    // @dev Duration of the lottery in seconds
+    // @dev Duration of the lottery n seconds
     uint256 private immutable i_interval;
     uint256 private s_startTime;
     VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
@@ -106,12 +82,12 @@ contract Raffle is VRFConsumerBaseV2 {
         if (!upkeepNeeded) revert Raffle__UpkeepNotNeeded();
 
         s_raffleState = RaffleState.CalculatingWinner;
-        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+        i_vrfCoordinator.requestRandomWords(
             gasLane, s_subscriptionId, REQUEST_CONFIRMATIONS, callbackGasLimit, NUM_WORDS
         );
     }
 
-    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override {
+    function fulfillRandomWords(uint256 /* _requestId */, uint256[] memory _randomWords) internal override {
         uint256 winnerIndex = _randomWords[0] % s_players.length;
         address payable winner = s_players[winnerIndex];
         s_recentWinner = winner;
@@ -124,10 +100,6 @@ contract Raffle is VRFConsumerBaseV2 {
         if (!success) revert Raffle__TransferFailed();
 
         emit WinnerPicked(winner);
-    }
-
-    function getTicketPrice() public view returns (uint256) {
-        return i_ticketPrice;
     }
 
     function getPlayer(uint256 index) public view returns (address) {
